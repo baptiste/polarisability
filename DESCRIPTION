@@ -1,0 +1,20 @@
+Package: polarisability
+Version: 0.1
+Authors@R: person("Baptiste", "Auguie",
+    email = "baptiste.auguie@gmail.com", role = c("aut", "cre"))
+License: GPL-3 
+Title: Polarisability of small particles for electromagnetic scattering
+Description: The polarisability package provides a number of approximate formulas for the dipole, quadrupole, and octupole polarisability of small particles as described in the framework of the Rayleigh-Gans approximation of electromagnetic scattering.
+Date: 2013-02-19
+URL: https://github.com/baptiste/polarisability
+Type: Package
+LazyLoad: yes
+BuildVignettes: true
+Depends:
+    dielectric,
+    plyr,
+    reshape2
+Suggests:
+    grid,
+    ggplot2,
+    testthat
