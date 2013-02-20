@@ -1,7 +1,7 @@
 
-##' Long-wavelength polarizability approximation for metal-coated spheres (shells)
+##' Long-wavelength polarisability approximation for metal-coated spheres (shells)
 ##' 
-##' @title polarizability_shell
+##' @title polarisability_shell
 ##' @param radius in nm
 ##' @param wavelength vector, in nm
 ##' @param epsilon complex vector,  shell dielectric function
@@ -10,9 +10,9 @@
 ##' @param medium incident medium, real
 ##' @param ... unused
 ##' @export
-##' @family user_level polarizability shell approximate
+##' @family user_level polarisability shell approximate
 ##' @author baptiste Auguie
-polarizability_shell <- function(radius, wavelength, epsilon, f=1, core=1.5, medium=1.5, ...){
+polarisability_shell <- function(radius, wavelength, epsilon, f=1, core=1.5, medium=1.5, ...){
 
   thickness <- radius*(1-f)
   ss <- sqrt(epsilon) / medium

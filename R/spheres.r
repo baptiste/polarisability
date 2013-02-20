@@ -1,16 +1,16 @@
 
-##' Long-wavelength polarizability approximation for homogeneous spheres
+##' Long-wavelength polarisability approximation for homogeneous spheres
 ##' 
-##' @title polarizability_sphere
+##' @title polarisability_sphere
 ##' @param radius in nm
 ##' @param wavelength vector, in nm
 ##' @param epsilon complex vector
 ##' @param medium incident medium, real
 ##' @param ... unused
 ##' @export
-##' @family user_level polarizability sphere approximate
+##' @family user_level polarisability sphere approximate
 ##' @author baptiste Auguie
-polarizability_sphere <- function(radius, wavelength, epsilon, medium=1.336, ...){
+polarisability_sphere <- function(radius, wavelength, epsilon, medium=1.336, ...){
 
   s <- sqrt(epsilon) / medium
   k <- 2*pi*medium / wavelength

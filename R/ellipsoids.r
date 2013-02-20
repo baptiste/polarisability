@@ -1,86 +1,39 @@
-
-##' dispersion spectrum
+##' .. content for \description{} (no empty lines) ..
 ##'
-##' dispersion spectrum
-##' @title dispersion_spectrum
-##' @param cluster list describing a cluster
-##' @param angles of incident field in radians
-##' @param axis of incident field rotation character vector from ('x', 'y', 'z')
-##' @param material list
-##' @param medium medium refractive index
-##' @param polarisation linear or circular polarisation
-##' @param invert logical
-##' @param progress logical, display progress bar
-##' @return data.frame
+##' .. content for \details{} ..
+##' @title 
+##' @param laxis 
+##' @param saxis 
+##' @param ... unused
+##' @return 
 ##' @export
-##' @family user_level cda
+##' @family user_level polarisability shell approximate
+##' @author Baptiste Auguie
+chi <- function(laxis=50, saxis=50){
+  e <- sqrt(1-saxis^2/laxis^2)
+  (1-e^2)/e^2*(-1+1/(2*e)*log((1+e)/(1-e)))
+}
+
+##' Long-wavelength polarisability approximation for prolate ellipsoids
+##' 
+##' @title polarisability_ellipsoid
+##' @param wavelength vector, in nm
+##' @param epsilon complex vector,  shell dielectric function
+##' @param a 
+##' @param b 
+##' @param medium incident medium, real
+##' @param ... unused
+##' @export
+##' @family user_level polarisability shell approximate
 ##' @author baptiste Auguie
-dispersion_spectrum <- function (cluster, angles, axis="z", material, medium = 1.33,
-                                 polarisation=c("linear", "circular"), 
-                                 invert = FALSE, progress = FALSE) 
-{
-  k0 <- 2 * pi/material$wavelength
-  kn <- k0 * medium
-  polarisation <- match.arg(polarisation)
-  polarisation <- if(polarisation == "linear") 0L else if(polarisation == "circular") 1L 
-  
-  invalpha <- inverse_polarizability(cluster, material, 
-                                     polarizability_fun = polarizability_ellipsoid, 
-                                     medium = medium, kuwata = TRUE)
-  Nwavelengths <- length(k0)
-  Nparticles <- nrow(cluster$r)
-  Nangles <- length(angles)
-  if(length(axis) == 1) axis <- rep(axis, length.out=Nangles)
-  axeso <- axis # original codes
-  axis <- as.integer(factor(axis, levels=letters[24:26]))-1L
-  stopifnot(all(axis %in% c(0L, 1L, 2L)), !any(is.na(axis)))
-  stopifnot(Nangles == length(axis))
-  stopifnot(is.matrix(invalpha), is.vector(angles), is.matrix(cluster$r), 
-            is.matrix(cluster$angles))
-  stopifnot(ncol(invalpha)/3 == Nparticles, nrow(invalpha) == 
-    Nwavelengths)
-  res <- cda$dispersion_spectrum(kn, invalpha, cluster$r, 
-                                 cluster$angles, angles, axis, as.integer(polarisation), as.integer(invert), as.integer(progress))
-  
-  angles <- angles[rep(seq.int(Nangles), Nwavelengths)]
-  axis <- axeso[rep(seq.int(Nangles), Nwavelengths)]
-  wavelength <- rep(material$wavelength, each = Nangles)
-  
-  results <- 
-    rbind(data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 1, , drop = TRUE]),
-                     type = "extinction", polarisation = "1"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 2, , drop = TRUE]),
-                     type = "absorption", polarisation = "1"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 3, , drop = TRUE]),
-                     type = "scattering", polarisation = "1"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 4, , drop = TRUE]),
-                     type = "extinction", polarisation = "2"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 5, , drop = TRUE]),
-                     type = "absorption", polarisation = "2"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 6, , drop = TRUE]),
-                     type = "scattering", polarisation = "2"))
-  if(polarisation == 0L)
-    results$polarisation <- factor(results$polarisation, labels = c("p", "s"))
-  
-  if(polarisation == 1L){
+polarisability_ellipsoid <- function(wavelength, epsilon, a=50, b=30, 
+                                     medium = 1.33, ...){
+  La <- if(a == b) 1/3 else chi(a, b)
+  Lb <- Lc <-  1/2 * (1 - La)
     
-    results$polarisation <- factor(results$polarisation, labels = c("R", "L"))
-    results <- rbind(results,  data.frame(wavelength = wavelength, angles = angles, axis=axis,
-                                          value = c(res[, 4, , drop = TRUE]  - res[, 1, , drop = TRUE]),
-                                          type = "extinction", polarisation = "CD"))
-  }
-  
-  invisible(results)
+  Vcm <- a*b*b
+  V <- 4*pi/3*Vcm
+
+  Vcm*(epsilon - medium^2) * 1 / 
+    cbind(medium^2 + La*epsilon, medium^2 + Lb*epsilon, medium^2 + Lc*epsilon)
 }
