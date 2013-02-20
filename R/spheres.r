@@ -1,86 +1,54 @@
 
-##' dispersion spectrum
-##'
-##' dispersion spectrum
-##' @title dispersion_spectrum
-##' @param cluster list describing a cluster
-##' @param angles of incident field in radians
-##' @param axis of incident field rotation character vector from ('x', 'y', 'z')
-##' @param material list
-##' @param medium medium refractive index
-##' @param polarisation linear or circular polarisation
-##' @param invert logical
-##' @param progress logical, display progress bar
-##' @return data.frame
+##' Long-wavelength polarizability approximation for homogeneous spheres
+##' 
+##' @title polarizability_sphere
+##' @param radius in nm
+##' @param wavelength vector, in nm
+##' @param epsilon complex vector
+##' @param medium incident medium, real
+##' @param ... unused
 ##' @export
-##' @family user_level cda
+##' @family user_level polarizability sphere approximate
 ##' @author baptiste Auguie
-dispersion_spectrum <- function (cluster, angles, axis="z", material, medium = 1.33,
-                                 polarisation=c("linear", "circular"), 
-                                 invert = FALSE, progress = FALSE) 
-{
-  k0 <- 2 * pi/material$wavelength
-  kn <- k0 * medium
-  polarisation <- match.arg(polarisation)
-  polarisation <- if(polarisation == "linear") 0L else if(polarisation == "circular") 1L 
-  
-  invalpha <- inverse_polarizability(cluster, material, 
-                                     polarizability_fun = polarizability_ellipsoid, 
-                                     medium = medium, kuwata = TRUE)
-  Nwavelengths <- length(k0)
-  Nparticles <- nrow(cluster$r)
-  Nangles <- length(angles)
-  if(length(axis) == 1) axis <- rep(axis, length.out=Nangles)
-  axeso <- axis # original codes
-  axis <- as.integer(factor(axis, levels=letters[24:26]))-1L
-  stopifnot(all(axis %in% c(0L, 1L, 2L)), !any(is.na(axis)))
-  stopifnot(Nangles == length(axis))
-  stopifnot(is.matrix(invalpha), is.vector(angles), is.matrix(cluster$r), 
-            is.matrix(cluster$angles))
-  stopifnot(ncol(invalpha)/3 == Nparticles, nrow(invalpha) == 
-    Nwavelengths)
-  res <- cda$dispersion_spectrum(kn, invalpha, cluster$r, 
-                                 cluster$angles, angles, axis, as.integer(polarisation), as.integer(invert), as.integer(progress))
-  
-  angles <- angles[rep(seq.int(Nangles), Nwavelengths)]
-  axis <- axeso[rep(seq.int(Nangles), Nwavelengths)]
-  wavelength <- rep(material$wavelength, each = Nangles)
-  
-  results <- 
-    rbind(data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 1, , drop = TRUE]),
-                     type = "extinction", polarisation = "1"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 2, , drop = TRUE]),
-                     type = "absorption", polarisation = "1"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 3, , drop = TRUE]),
-                     type = "scattering", polarisation = "1"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 4, , drop = TRUE]),
-                     type = "extinction", polarisation = "2"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 5, , drop = TRUE]),
-                     type = "absorption", polarisation = "2"),
-          data.frame(wavelength = wavelength, angles = angles,
-                     axis=axis,
-                     value = c(res[, 6, , drop = TRUE]),
-                     type = "scattering", polarisation = "2"))
-  if(polarisation == 0L)
-    results$polarisation <- factor(results$polarisation, labels = c("p", "s"))
-  
-  if(polarisation == 1L){
+polarizability_sphere <- function(radius, wavelength, epsilon, medium=1.336, ...){
+
+  s <- sqrt(epsilon) / medium
+  k <- 2*pi*medium / wavelength
+  x <- k*radius
+  s2 <- s^2
+  D1_0 <- 2i/3 * (s2 - 1)/(s2 + 2) * x^3
+  Delta <-  D1_0 / (1 - 3/5*x^2*(s2 - 2)/(s2 + 2) - D1_0 - 3/350*x^4 * (s^4 - 24*s2 + 16) / (s2 + 2))
     
-    results$polarisation <- factor(results$polarisation, labels = c("R", "L"))
-    results <- rbind(results,  data.frame(wavelength = wavelength, angles = angles, axis=axis,
-                                          value = c(res[, 4, , drop = TRUE]  - res[, 1, , drop = TRUE]),
-                                          type = "extinction", polarisation = "CD"))
-  }
+  dip <- 
+  transform(data.frame(wavelength=wavelength,
+                       extinction = -2/x^2 * 3* Re(Delta),
+                       scattering = 2/x^2 * 3* Mod(Delta)^2),
+            absorption = extinction - scattering,
+            order = "dipole")   
+
+  Delta2 <- (1i*x^5/30*(s2-1)) / (s2+3/2+5/14*x^2-5/2646*x^4*(s^4+30*s2-45)-1i*x^5/30*(s2-1))
   
-  invisible(results)
+  quad <- 
+  transform(data.frame(wavelength=wavelength,
+                       extinction = -2/x^2 * 5 * Re(Delta2),
+                       scattering = 2/x^2 * 5* Mod(Delta2)^2),
+            absorption = extinction - scattering,
+            order = "quadrupole")
+  
+  Delta3 <- (4i/4725*x^7*(s2-1)) / (s2 +4/3+7*x^2/135*(s2+4) - 7*x^4/10692*(s^4+8*s^2-32) - 4i*x^7/4725*(s2-1))
+  oct <- 
+  transform(data.frame(wavelength=wavelength,
+                       extinction = -2/x^2 * 7 * Re(Delta3),
+                       scattering = 2/x^2 * 7 * Mod(Delta3)^2),
+            absorption = extinction - scattering,
+            order = "octupole")
+
+  
+  all <- transform(dip,
+                   extinction = extinction + quad$extinction + oct$extinction, 
+                   scattering = scattering + quad$scattering + oct$scattering,
+                   absorption = absorption + quad$absorption + oct$absorption, order="all")
+
+  rbind(dip, quad, oct, all)
+  
 }
